@@ -79,7 +79,7 @@ void leer_distancia()
   //-----------------------------------------------------
   temporizador= temporizador+2;
   
-  if (temporizador>=1200) 
+  if (temporizador>=150) 
   { 
   tempo_pago=tempo_pago+1;
   //-----------------------------------------------------
@@ -91,14 +91,14 @@ void leer_distancia()
   add_int(volint); 
   //enviamos nuestro dato por Sigfox
   send_message(bufer);
-    if(tempo_pago>=8)
+    if(tempo_pago>=1)
     {
-      bufer="AT$SF=";
-      int cmdpago= 65535;
-      String cmdpagar;
-      cmdpagar=String(cmdpago, HEX);
-      bufer+=cmdpagar; 
-      send_message(bufer);
+      bufer="AT$SF=FFFF,1";
+      //int cmdpago= 65535;
+      //String cmdpagar;
+      //cmdpagar=String(cmdpago, HEX);
+      //bufer+=cmdpagar; 
+      send_message(bufer); 
       tempo_pago=0;
     }
   temporizador=0;
