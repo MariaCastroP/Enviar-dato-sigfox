@@ -1,14 +1,15 @@
-//-----#include <OneWire.h>
 #include <SoftwareSerial.h> 
 SoftwareSerial mySerial(4, 5); 
 //--------------Caudalimetro-----------------
 unsigned char flowsensor = 2;
 volatile int flow_frequency;  // Measures flow sensor pulses
-unsigned int l_hour;          // Calculated litres/hour
+float l_hour; //unsigned int l_hour;          // Calculated litres/hour
 unsigned long currentTime;
 unsigned long cloopTime;
+float volumen=0; //----prueba
+int volint=0; //----prueba
+long dt=0; //----prueba
 
-//---OneWire ourWire(3); //Se establece el pin 2  como bus OneWire
 /*Función que hace el conteo del flujo de los pulsos del sensor
    de agua esta función es un interrupción del programa principal
 */
@@ -18,34 +19,40 @@ void flow () // Interrupt function
 }
 
 //-----------------------------------------------------------------------
-void WaterFlowSensorYF_S201() {
+void WaterFlowSensorYF_S201() 
+{
   currentTime = millis();
   // Every second, calculate and print litres/hour
   if (currentTime >= (cloopTime + 1000))
   {
     cloopTime = currentTime; // Updates cloopTime
     // Pulse frequency (Hz) = 7.5Q, Q is flow rate in L/min.
-    l_hour = (flow_frequency * 60 / 7.5); // (Pulse frequency x 60 min) / 7.5Q = flowrate in L/hour
+    l_hour = (flow_frequency*60/ 7.5); // (Pulse frequency*60 ) / 7.5Q = flowrate in L/hour
     flow_frequency = 0; // Reset Counter
     Serial.print("F=");
     Serial.println(l_hour, DEC); // Print litres/hour
   }
 }
 //-----------------------------------------------------------------------
-
+void SumVolume(float dV) //----prueba
+{
+   volumen += dV / 60 * (millis() - currentTime) / 100.0; //----prueba
+   currentTime = millis(); //---prueba
+}
+//-----------------------------------------------------------------------
 
 #define boton 7//const int boton=2;
 int temporizador=0;
 int tempo_pago=0;
-//*****************************************************
-String bufer; //variable donde guardaremos nuestro payload************
-String bufer2="\n";   //agregamos un salto de linea al final de nuestro payload ***********+
-//*****************************************************
+//---------------------------Añadir Payload------------------------
+String bufer; //variable donde guardaremos nuestro payload
+String bufer2="\n";   //agregamos un salto de linea al final de nuestro payload
+//-------------------------------------------------------------------
 void setup() 
 {
   //--------- CONFIGURA CAUDALIMETRO----------
   pinMode(flowsensor, INPUT);
-    //---------------------------------------------------
+  //---------------------------------------------------
   digitalWrite(flowsensor, HIGH); // Optional Internal Pull-Up
   attachInterrupt(0, flow, RISING); // Setup Interrupt
   sei(); // Enable interrupts
@@ -63,29 +70,28 @@ void leer_distancia()
 {
   
   WaterFlowSensorYF_S201();   //funcion que envia datos del sensor de flujo
-  
-  int distancia=38;
-  Serial.println("Nueva Lectura ");
-  Serial.print("Distancia: ") ;
-  Serial.println(distancia) ;
-  
+  //---------------------Calcular volumen-------------------------
+  SumVolume(l_hour);
+  //---------------------Calcular volumen-------------------------
+  Serial.print("\t V= ");//----prueba
+  Serial.println(volumen,3); // Print litres/hour//----prueba
+  volint=int(volumen);
+  //-----------------------------------------------------
   temporizador= temporizador+2;
   
-  if (temporizador>=200) 
+  if (temporizador>=1200) 
   { 
-     //sidable interrupts
-    tempo_pago=tempo_pago+1;
+  tempo_pago=tempo_pago+1;
   //-----------------------------------------------------
   //AT$SF= comando para mandar la informacion por sigfox
   //Maximo 12 bytes
   bufer="AT$SF="; //
   //-----------------------------------------------------
   //agregamos nuestro valor de la distancia al payload a enviar
-  add_int(l_hour); 
-  
+  add_int(volint); 
   //enviamos nuestro dato por Sigfox
   send_message(bufer);
-    if(tempo_pago>=3)
+    if(tempo_pago>=8)
     {
       bufer="AT$SF=";
       int cmdpago= 65535;
@@ -96,6 +102,7 @@ void leer_distancia()
       tempo_pago=0;
     }
   temporizador=0;
+  volumen=0;
   }
   Serial.print(temporizador);
  
@@ -104,18 +111,16 @@ void leer_distancia()
 void loop() 
 {
   
-  //digitalWrite(boton,HIGH);// borrar test 
-  //delay(1000);// borrar test
-  //digitalWrite(boton,LOW);// borrar test
-  //delay(10000);// borrar test
-
   if (digitalRead(boton)==LOW)
   { 
     leer_distancia();
     delay(1000);
   } 
 }
-void add_float(float var1) //funcion para agregar flotantes al payload
+
+//----------------funcion para agregar flotantes al payload---------------------------
+
+void add_float(float var1) 
 {
   byte* a1 = (byte*) &var1;    //convertimos el dato a bytes
   String str1;
@@ -133,7 +138,9 @@ void add_float(float var1) //funcion para agregar flotantes al payload
     }
   }
 }
-void add_int(int var2)    //funcion para agregar enteros al payload (hasta 255)
+
+//----------------funcion para agregar enteros al payload (hasta 255)---------------------
+void add_int(int var2)    
 {
   byte* a2 = (byte*) &var2; //convertimos el dato a bytes
   String str2;
@@ -148,6 +155,8 @@ void add_int(int var2)    //funcion para agregar enteros al payload (hasta 255)
     bufer+=str2;     //si esta completo, se copia tal cual
   }
 }
+
+//------------------------Función para mandar datos---------------------
 void send_message(String payload)
 {
   //agregamos el salto de linea "\n"
