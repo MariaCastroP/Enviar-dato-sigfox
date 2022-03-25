@@ -1,3 +1,4 @@
+#include <LiquidCrystal.h>
 #include <SoftwareSerial.h> 
 SoftwareSerial mySerial(4, 5); 
 //--------------Caudalimetro-----------------
@@ -9,7 +10,7 @@ unsigned long cloopTime;
 float volumen=0; //----prueba
 int volint=0; //----prueba
 long dt=0; //----prueba
-
+LiquidCrystal lcd(13, 12, 11, 10, 9, 8, 7); //(RS, RW, E, D4,D5, D6, D7)
 /*Función que hace el conteo del flujo de los pulsos del sensor
    de agua esta función es un interrupción del programa principal
 */
@@ -61,6 +62,7 @@ void setup()
   //---------------------------------------------------
   Serial.begin(9600);
   mySerial.begin(9600);
+  lcd.begin(16, 2);
   while (!Serial) {;}    
   pinMode(boton, OUTPUT);//pinMode(boton, INPUT);
   pinMode(3, OUTPUT);   //enable modulo wisol
@@ -72,6 +74,11 @@ void leer_distancia()
   WaterFlowSensorYF_S201();   //funcion que envia datos del sensor de flujo
   //---------------------Calcular volumen-------------------------
   SumVolume(l_hour);
+  //--------------------mostrar flujo lcd-----------
+  lcd.setCursor(4, 0);         // Coloca el cursor en las coordenadas (0,0)   
+  lcd.print("Flujo:"); // Escribe no LCD   
+  lcd.setCursor(4, 1);         // Coloca el cursor en las coordenadas (3,1) 
+  lcd.print(l_hour);
   //---------------------Calcular volumen-------------------------
   Serial.print("\t V= ");//----prueba
   Serial.println(volumen,3); // Print litres/hour//----prueba
@@ -79,7 +86,7 @@ void leer_distancia()
   //-----------------------------------------------------
   temporizador= temporizador+2;
   
-  if (temporizador>=1200) 
+  if (temporizador>=150) 
   { 
   tempo_pago=tempo_pago+1;
   //-----------------------------------------------------
@@ -91,14 +98,14 @@ void leer_distancia()
   add_int(volint); 
   //enviamos nuestro dato por Sigfox
   send_message(bufer);
-    if(tempo_pago>=8)
+    if(tempo_pago>=3)
     {
-      bufer="AT$SF=";
-      int cmdpago= 65535;
-      String cmdpagar;
-      cmdpagar=String(cmdpago, HEX);
-      bufer+=cmdpagar; 
-      send_message(bufer);
+      bufer="AT$SF=FFFF,1";
+      //int cmdpago= 65535;
+      //String cmdpagar;
+      //cmdpagar=String(cmdpago, HEX);
+      //bufer+=cmdpagar; 
+      send_message(bufer); 
       tempo_pago=0;
     }
   temporizador=0;
